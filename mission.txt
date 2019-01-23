@@ -1,0 +1,65 @@
+video_global:
+video_track_rois						(vid_len, capacity, 4)
+video_track_ids							(vid_len, capacity)
+video_track_cls							(vid_len, capacity)
+video_track_num							(vid_len)
+
+output for test:
+video_track_old_rois				(vid_len, capacity, 5) pos+cls
+video_track_new_rois				(vid_len, capacity, 5) pos+cls
+video_track_predict_rois		(vid_len, capacity, 4)
+
+prev_frame:																																						
+	predict_track_M						(capacity, 512+2*(n_cls), lsmt_feature_k, lstm_feature_k)			previous frame output of lstm
+	prev_track_features				(capacity, 512, lstm_feature_k, lstm_feature_k)								previous boxes' pooled features
+	prev_track_ids						(capacity)																												
+	prev_track_cls						(capacity)
+	prev_track_roi						(capacity, 4)
+
+curr_frame:
+track_old_num
+track_new_num
+track_lost_num
+track_obj_num
+
+prev_track_obj_inds 				(track_obj_num)																								prev frame's existing box's index in prev_track_ids
+prev_track_old_inds 				(track_old_num)
+prev_track_lost_inds 				(track_lost_num)
+
+if track_obj_num is not 0:
+
+predict_track_obj_M					(track_obj_num, 512+2*(n_cls), lsmt_feature_k, lstm_feature_k)	
+prev_track_obj_cls					(track_obj_num)
+prev_track_obj_roi					(track_obj_num, 4)
+
+predict_track_obj_movement_map							(track_obj_num, 2, lstm_feature_k, lstm_feature_k)				the corresponding cls's move extracted from 		predict_track_obj_Movement									(track_obj_num, 2, 2, 2) 																	average movement pooled from map in 4 boundaries' direction
+predict_track_obj_rela_move									(track_obj_num, 4)
+predict_track_obj_roi 											(track_obj_num, 4)																				predicted track roi 
+predict_track_obj_roi_valid_inds						(track_old_num)																						valid predicted track roi (invalid is regarded lost)
+
+if training:
+curr_track_obj_gt_rois											(track_obj_num, 4)
+curr_track_obj_gt_rois_mask 								(track_obj_num)                                           0-1 indicator
+curr_track_old_gt_rois_inds									(track_old_num) 																					all 1's inds in curr_track_obj_gt_rois_mask
+predict_target/gt_target 																																							for calculating predicting loss
+end if 
+
+if track_old_num != 0:
+predict_track_old_M_feature 								(track_old_num, 512, lsmt_feature_k, lstm_feature_k)	   	old boxes previous tracking features
+curr_track_old_rois 												(track_old_num, 4)																				track old rois for each old boxes								 *
+curr_track_old_roi_inds											(track_old_num)																						track old rois' ind for each old boxes           *
+rois_overlaps                   						(n_rois, track_old_num)																		overlapping score of rois and predicted rois
+rois_overlaps_max														(n_rois) 																									max score of each roi
+rois_max_predict_inds 											(n_rois)																									each rois max score's corresponding predicted roi
+curr_track_old_roi_inds 										(track_old_num) 																					tracking rois' roi inds
+
+
+compare_gts																	(track_old_num)																						each old boxes gt roi index in curr rois
+gt_old_rois_inds 														(track_old_num)
+for each track old box:
+roi_predict_candidates_j_append_rois				(20, 5)																										each old box's top 20 overlap rois, (ind,....) ind is vid ind
+roi_predict_candidates_j_pooled_feat   			(20, 512, lstm_feature_k, lstm_feature_k)									top 20 rois pooled features from base feat
+compare_feature															(20, 512, lstm_feature_k, lstm_feature_k)									
+compare_input																(20, 1024, lstm_feature_k, lstm_feature_k)		
+compare_result															(20)				
+compare_results															(track_old_num, 20)																				compare score of top 20
